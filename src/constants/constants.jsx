@@ -8,11 +8,15 @@ export const DEFAULT_APP_SETTINGS = {
   initialVolume: "50",
 
   //Internal
+  soundRadioNoise: "sounds/noise_radio_soft.mp3",
   soundRadioOn: "sounds/click_button.mp3",
   soundRadioOff: "sounds/click_button.mp3",
   range: { min: 87.0, max: 108.0 },
   step: 0.1,
-  tolerance: 0.3,
+  tolerance: 0.2,
+
+  station_range: 0.2,
+  station_noise_range: 0.4,
 };
 
 export const SKINS = {

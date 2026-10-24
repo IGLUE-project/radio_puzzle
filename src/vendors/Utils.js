@@ -156,3 +156,18 @@ export function isPDFSupported() {
   }
   return pdfReaderSupport;
 }
+
+export function parseNumberFromSetting(value){
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? null : value;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') {
+      return null;
+    }
+    const num = Number(trimmed);
+    return Number.isNaN(num) ? null : num;
+  }
+  return null;
+};

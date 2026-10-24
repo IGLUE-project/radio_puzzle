@@ -7,31 +7,92 @@ import { SKINS } from "../constants/constants.jsx";
 import useSound from "../hooks/useSound.js";
 
 export default function MainScreen({ solvePuzzle, solved }) {
-    const { appSettings: config, Storage } = useContext(GlobalContext);
-    const winSound = useSound("/sounds/solution_ok.mp3");
+    const { appSettings, Storage, Utils } = useContext(GlobalContext);
 
-    const audioCtxRef = useRef(null);
-    const staticNodeRef = useRef(null);
-    const staticGainRef = useRef(null);
-    const stationNodesRef = useRef({}); // { freq: { element: Audio, gain: GainNode, source: MediaElementSource } }
+    const audioContextRef = useRef(null);
     const masterGainRef = useRef(null);
+    const stationAudiosRef = useRef(null);
+    const noiseAudioRef = useRef(null);
+
+    const audioContextStartedRef = useRef(false);
+    const audioStartedRef = useRef(false);
 
     const [radioState, setRadioState] = useState("off"); // possible values: "off" and "on". Start with "off" to force the radio to be switched on to allow autoplay
     const radioStateRef = useRef(radioState);
-    const [isClicked, setIsClicked] = useState(false);
+    
     const [frequency, setFrequency] = useState(() => {
         const stored = Storage?.getSetting("frequency");
-        return (stored !== null && stored !== undefined) ? parseFloat(stored) : (config.range?.min);
+        return (stored !== null && stored !== undefined) ? parseFloat(stored) : (appSettings.range?.min);
     });
     const [volume, setVolume] = useState(() => {
         const stored = Storage?.getSetting("volume");
         return (stored !== null && stored !== undefined) ? parseFloat(stored) : 0.5;
     });
 
-    const MIN_FREQ = config.range?.min;
-    const MAX_FREQ = config.range?.max;
-    const STEP = config.step;
-    const TOLERANCE = config.tolerance;
+    useEffect(() => {
+       _initRadioAudio();
+    }, []);
+
+    function _initRadioAudio() {
+        Utils.log("_initRadioAudio");
+        if(audioContextStartedRef.current === true) return;
+
+        // Crear audio context
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const audioContext = new AudioContextClass();
+
+        // Create general volume
+        const masterGain = audioContext.createGain();
+        masterGain.gain.value = 0;
+        masterGain.connect(audioContext.destination);
+
+        // Save references
+        audioContextRef.current = audioContext;
+        masterGainRef.current = masterGain;
+        stationAudiosRef.current = [];
+
+        // Crear audio de cada emisora
+        appSettings.validatedStations.forEach(station => {
+            const audio = new Audio(station.src);
+            audio.loop = true;
+            audio.preload = "auto";
+
+            // Crear source node
+            const source = audioContext.createMediaElementSource(audio);
+            // Create initial volume
+            const gain = audioContext.createGain();
+            gain.gain.value = 0;
+            // Connect nodes
+            source.connect(gain);
+            gain.connect(masterGain);
+
+            // Save station
+            stationAudiosRef.current.push({
+                freq: station.freq,
+                audio,
+                source,
+                gain
+            });
+        });
+
+        // Create noise audio
+        const noiseAudio = new Audio(appSettings.soundRadioNoise);
+        noiseAudio.loop = true;
+        noiseAudio.preload = "auto";
+        const noiseSource = audioContext.createMediaElementSource(noiseAudio);
+        const noiseGain = audioContext.createGain();
+        noiseGain.gain.value = 0;
+        noiseSource.connect(noiseGain);
+        noiseGain.connect(masterGain);
+        noiseAudioRef.current = {
+            audio: noiseAudio,
+            source: noiseSource,
+            gain: noiseGain
+        };
+
+        audioContextStartedRef.current = true;
+        Utils.log("Audio initiated");
+    }
 
     // Save state to storage on change
     useEffect(() => {
@@ -46,12 +107,6 @@ export default function MainScreen({ solvePuzzle, solved }) {
         }
     }, [volume]);
 
-    useEffect(() => {
-        if (solved) {
-            winSound.play();
-        }
-    }, [solved]);
-
 
     ////////////
     // Radio on/off
@@ -61,13 +116,24 @@ export default function MainScreen({ solvePuzzle, solved }) {
         // Utils.log("Previous radioState:", radioStateRef.current);
         // Utils.log("New radioState:", radioState);
 
+        if(audioContextRef.current === null){
+            return;
+        }
+
         let audio;
         if((radioStateRef.current === "off")&&(radioState !== "off")){
           //Radio has been turned on
           audio = document.getElementById("audio_radio_on");
+          _enablePlayingRadioAudio();
+          _playAudioForFrequency(frequency);
         } else if((radioStateRef.current !== "off")&&(radioState === "off")){
           //Radio has been turned off
           audio = document.getElementById("audio_radio_off");
+          masterGainRef.current.gain.setTargetAtTime(
+            0,
+            audioContextRef.current.currentTime,
+            0.05
+          );
         }
 
         if (audio != null) {
@@ -82,114 +148,109 @@ export default function MainScreen({ solvePuzzle, solved }) {
 
     }, [radioState]);
 
+    async function _enablePlayingRadioAudio() {
+        const audioContext = audioContextRef.current;
+        if (!audioContext) return;
 
-    // Initialize Audio Context
-    useEffect(() => {
-        if (!config.stations) return;
+        await audioContext.resume();
 
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioContext();
-        audioCtxRef.current = ctx;
+        // Start audio tracks only once
+        if (!audioStartedRef.current) {
+            audioStartedRef.current = true;
 
-        // Master Gain (Volume)
-        const masterGain = ctx.createGain();
-        masterGain.gain.value = 0.5;
-        masterGain.connect(ctx.destination);
-        masterGainRef.current = masterGain;
+            const audios = [
+                ...stationAudiosRef.current.map(station => station.audio),
+                noiseAudioRef.current.audio
+            ];
 
-        // 1. Setup Static Noise ( generated by code)
-        setupWhiteNoise(ctx, masterGain);
+            const results = await Promise.allSettled(
+                audios.map(audio => audio.play())
+            );
 
-        // 2. Setup Stations
-        config.stations.forEach(station => {
-            const audio = new Audio(station.url);
-            audio.loop = true;
-            audio.crossOrigin = "anonymous";
-            audio.volume = volume;
-            stationNodesRef.current[station.freq] = { audio, config: station };
+            if (results.some(result => result.status === "rejected")) {
+                audioStartedRef.current = false;
+            }
+        }
+    }
+
+    function _playAudioForFrequency(_frequency) {
+        const audioContext = audioContextRef.current;
+        const stations = stationAudiosRef.current;
+        const noise = noiseAudioRef.current;
+
+        if (!audioContext || !stations || !noise) return;
+
+        const now = audioContext.currentTime;
+        const fadeTime = 0.05;
+
+        const stationRange = appSettings.station_range;
+        const noiseRange = appSettings.station_noise_range > stationRange
+            ? appSettings.station_noise_range + 0.1
+            : stationRange;
+
+        // Find the closest station within noise range
+        const activeStation = stations
+            .map(station => ({
+                station,
+                distance: Math.abs(station.freq - _frequency)
+            }))
+            .filter(item => item.distance <= noiseRange)
+            .sort((a, b) => a.distance - b.distance)[0];
+
+        let stationGain = 0;
+        let noiseGain = 1;
+
+        if (activeStation) {
+            const distance = activeStation.distance;
+
+            if (distance <= stationRange) {
+                // Clear reception without static noise
+                stationGain = 1;
+                noiseGain = 0;
+            } else {
+                // Gradually mix station audio with static noise
+                const progress = (distance - stationRange) /
+                    (noiseRange - stationRange);
+
+                stationGain = 1 - progress;
+                noiseGain = progress;
+            }
+        }
+
+        // Update station gains
+        stations.forEach(station => {
+            station.gain.gain.setTargetAtTime(
+                station === activeStation?.station ? stationGain : 0,
+                now,
+                fadeTime
+            );
         });
 
-        return () => {
-            // Cleanup
-            if (audioCtxRef.current) audioCtxRef.current.close();
-            Object.values(stationNodesRef.current).forEach(n => {
-                n.audio.pause();
-                n.audio.src = "";
-            });
-        };
-    }, []);
+        // Update static noise gain
+        noise.gain.gain.setTargetAtTime(
+            noiseGain,
+            now,
+            fadeTime
+        );
+    }
+    
+    useEffect(() => {
+        const audioContext = audioContextRef.current;
+        const masterGain = masterGainRef.current;
+        if (!audioContext || !masterGain) return;
+
+        // Update master volume according to radio state
+        masterGain.gain.setTargetAtTime(
+            radioState === "on" ? volume : 0,
+            audioContext.currentTime,
+            0.05
+        );
+    }, [radioState, volume]);
 
     useEffect(() => {
-        let maxSignal = 0;
-
-        // Check each station
-        Object.values(stationNodesRef.current).forEach(({ audio, config }) => {
-            const dist = Math.abs(frequency - config.freq);
-            let signal = 0;
-
-            if (dist < TOLERANCE) {
-                signal = 1 - (dist / TOLERANCE);
-            }
-
-            if (signal > maxSignal) maxSignal = signal;
-            audio.volume = signal * volume;
-
-            if (signal > 0 && audio.paused) {
-                const p = audio.play();
-                if (p) p.catch(() => { });
-            } else if (signal === 0 && !audio.paused) {
-                audio.pause();
-            }
-        });
-
-        if (staticGainRef.current) {
-            const staticVal = (1 - maxSignal) * volume * 0.3;
-            staticGainRef.current.gain.setTargetAtTime(staticVal, audioCtxRef.current.currentTime, 0.1);
-        }
-
-    }, [frequency, volume, solved, isClicked]);
-
-    useEffect(() => {
-        const stations = config.stations;
-        if (stations && !solved) {
-            const tunedStation = stations.find(station => Math.abs(frequency - station.freq) < (TOLERANCE / 4));
-
-            if (tunedStation) {
-                const timer = setTimeout(() => {
-                    solvePuzzle(frequency); // Pass frequency as solution
-                }, 5000);
-                return () => clearTimeout(timer);
-            }
-        }
-    }, [frequency, solved, config]);
-
-    const setupWhiteNoise = (ctx, masterGain) => {
-        const bufferSize = ctx.sampleRate * 2;
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.loop = true;
-        const gain = ctx.createGain();
-        gain.gain.value = 0;
-        source.connect(gain);
-        gain.connect(masterGain);
-        source.start();
-        staticNodeRef.current = source;
-        staticGainRef.current = gain;
-    };
-
-    const handleInteraction = () => {
-        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-            audioCtxRef.current.resume();
-        }
-        setIsClicked(true);
-    };
+        if (radioState !== "on") return;
+        _playAudioForFrequency(frequency);
+    }, [frequency]);
 
     const lastClickRef = useRef(0);
     const onClickPowerButton = () => {
@@ -201,29 +262,29 @@ export default function MainScreen({ solvePuzzle, solved }) {
         setRadioState(prev => prev === "off" ? "on" : "off");
     };
 
-    const skinClass = config?.skin ? `skin-${config.skin.toLowerCase()}` : 'skin-standard';
+    const skinClass = appSettings?.skin ? `skin-${appSettings.skin.toLowerCase()}` : 'skin-standard';
     return (
-        <div className={`mainScreen ${skinClass}`} onClick={handleInteraction}>
-            {SKINS.STANDARD === config.skin ? <RadioDevice
+        <div className={`mainScreen ${skinClass}`}>
+            {SKINS.STANDARD === appSettings.skin ? <RadioDevice
                 frequency={frequency}
                 setFrequency={setFrequency}
                 volume={volume}
                 setVolume={setVolume}
-                minFreq={MIN_FREQ}
-                maxFreq={MAX_FREQ}
-                step={STEP}
+                minFreq={appSettings.range.min}
+                maxFreq={appSettings.range.max}
+                step={appSettings.step}
                 solved={solved}
                 radioState={radioState}
                 onClickPowerButton={onClickPowerButton}
             /> : <RadioDeviceImg
-                config={config}
+                config={appSettings}
                 frequency={frequency}
                 setFrequency={setFrequency}
                 volume={volume}
                 setVolume={setVolume}
-                minFreq={MIN_FREQ}
-                maxFreq={MAX_FREQ}
-                step={STEP}
+                minFreq={appSettings.range.min}
+                maxFreq={appSettings.range.max}
+                step={appSettings.step}
                 solved={solved}
                 radioState={radioState}
                 onClickPowerButton={onClickPowerButton}
