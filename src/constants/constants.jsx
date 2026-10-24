@@ -8,7 +8,8 @@ export const DEFAULT_APP_SETTINGS = {
   initialVolume: "50",
 
   //Internal
-  // whiteNoiseSound: "/sounds/white_noise.wav",
+  soundRadioOn: "sounds/click_button.mp3",
+  soundRadioOff: "sounds/click_button.mp3",
   range: { min: 87.0, max: 108.0 },
   step: 0.1,
   tolerance: 0.3,

@@ -16,6 +16,8 @@ export default function MainScreen({ solvePuzzle, solved }) {
     const stationNodesRef = useRef({}); // { freq: { element: Audio, gain: GainNode, source: MediaElementSource } }
     const masterGainRef = useRef(null);
 
+    const [radioState, setRadioState] = useState("off"); // possible values: "off" and "on". Start with "off" to force the radio to be switched on to allow autoplay
+    const radioStateRef = useRef(radioState);
     const [isClicked, setIsClicked] = useState(false);
     const [frequency, setFrequency] = useState(() => {
         const stored = Storage?.getSetting("frequency");
@@ -36,19 +38,50 @@ export default function MainScreen({ solvePuzzle, solved }) {
         if (Storage) {
             Storage.saveSetting("frequency", frequency);
         }
-    }, [frequency, Storage]);
+    }, [frequency]);
 
     useEffect(() => {
         if (Storage) {
             Storage.saveSetting("volume", volume);
         }
-    }, [volume, Storage]);
+    }, [volume]);
 
     useEffect(() => {
         if (solved) {
             winSound.play();
         }
     }, [solved]);
+
+
+    ////////////
+    // Radio on/off
+    ////////////
+
+    useEffect(() => {
+        // Utils.log("Previous radioState:", radioStateRef.current);
+        // Utils.log("New radioState:", radioState);
+
+        let audio;
+        if((radioStateRef.current === "off")&&(radioState !== "off")){
+          //Radio has been turned on
+          audio = document.getElementById("audio_radio_on");
+        } else if((radioStateRef.current !== "off")&&(radioState === "off")){
+          //Radio has been turned off
+          audio = document.getElementById("audio_radio_off");
+        }
+
+        if (audio != null) {
+          setTimeout(() => {
+            audio.currentTime = 0;
+            audio.play();
+          }, 0);
+        }
+
+        //Update previous value
+        radioStateRef.current = radioState;
+
+    }, [radioState]);
+
 
     // Initialize Audio Context
     useEffect(() => {
@@ -158,8 +191,17 @@ export default function MainScreen({ solvePuzzle, solved }) {
         setIsClicked(true);
     };
 
-    const skinClass = config?.skin ? `skin-${config.skin.toLowerCase()}` : 'skin-standard';
+    const lastClickRef = useRef(0);
+    const onClickPowerButton = () => {
+        const now = Date.now();
+        if (now - lastClickRef.current < 1500) {
+            return;
+        }
+        lastClickRef.current = now;
+        setRadioState(prev => prev === "off" ? "on" : "off");
+    };
 
+    const skinClass = config?.skin ? `skin-${config.skin.toLowerCase()}` : 'skin-standard';
     return (
         <div className={`mainScreen ${skinClass}`} onClick={handleInteraction}>
             {SKINS.STANDARD === config.skin ? <RadioDevice
@@ -171,6 +213,8 @@ export default function MainScreen({ solvePuzzle, solved }) {
                 maxFreq={MAX_FREQ}
                 step={STEP}
                 solved={solved}
+                radioState={radioState}
+                onClickPowerButton={onClickPowerButton}
             /> : <RadioDeviceImg
                 config={config}
                 frequency={frequency}
@@ -181,6 +225,8 @@ export default function MainScreen({ solvePuzzle, solved }) {
                 maxFreq={MAX_FREQ}
                 step={STEP}
                 solved={solved}
+                radioState={radioState}
+                onClickPowerButton={onClickPowerButton}
             />}
         </div>
     );

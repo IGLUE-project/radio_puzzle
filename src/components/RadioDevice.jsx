@@ -2,8 +2,9 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { GlobalContext } from "./GlobalContext.jsx";
 import '../assets/scss/RadioDevice.scss';
 
-export default function RadioDevice({frequency, setFrequency, volume, setVolume, minFreq, maxFreq, step, solved}) {
+export default function RadioDevice({frequency, setFrequency, volume, setVolume, minFreq, maxFreq, step, solved, radioState, onClickPowerButton}) {
     const { appSettings, Utils, I18n } = useContext(GlobalContext);
+    const radioOn = (radioState==="on");
 
     const calculateNeedlePosition = () => {
         const pct = ((frequency - minFreq) / (maxFreq - minFreq)) * 100;
@@ -11,13 +12,13 @@ export default function RadioDevice({frequency, setFrequency, volume, setVolume,
     };
 
     return (
-        <div className="radio-device">
+        <div className={`radio-device ${radioOn ? 'radio-device-on' : 'radio-device-off'}`}>
             <div className="radio-top">
                 <div className="speaker-grill"></div>
                 <div className="display-panel">
                     <div className="lcd-display-wrapper">
                         <div className="lcd-display">
-                            {frequency.toFixed(1)} <span className="mhz">MHz</span>
+                            <p className="lcd-display-content"><span className="frequency">{frequency.toFixed(1)}</span> <span className="mhz">MHz</span></p>
                         </div>
                     </div>
                     <div className="scale-container-wrapper">
@@ -35,7 +36,7 @@ export default function RadioDevice({frequency, setFrequency, volume, setVolume,
                 </div>
                 <div className="power-button">
                     <div className="power-button-image">
-                        <img src="images/power_button_standard.png"/>
+                        <img src="images/power_button_standard.png" onClick={onClickPowerButton} />
                     </div>
                 </div>
             </div>
@@ -69,6 +70,8 @@ export default function RadioDevice({frequency, setFrequency, volume, setVolume,
                     />
                 </div>
             </div>
+            {appSettings.soundRadioOn && <audio id="audio_radio_on" src={appSettings.soundRadioOn} preload="auto"/>}
+            {appSettings.soundRadioOff && <audio id="audio_radio_off" src={appSettings.soundRadioOff} preload="auto"/>}
         </div>
     );
 }
