@@ -171,3 +171,11 @@ export function parseNumberFromSetting(value){
   }
   return null;
 };
+
+export function parseChannelId(channelId, frequencyRange) {
+  channelId = parseNumberFromSetting(channelId);
+  if (channelId === null || !Number.isFinite(channelId)) {
+      return;
+  }
+  return Math.min(frequencyRange.max,Math.max(frequencyRange.min, channelId));
+}

@@ -1,17 +1,22 @@
 import "./../assets/scss/MainScreen.scss";
-import { useState, useRef, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef, forwardRef, useImperativeHandle } from 'react';
 import { GlobalContext } from "./GlobalContext.jsx";
 import RadioDevice from "./RadioDevice.jsx";
 import RadioDeviceImg from "./RadioDeviceImg.jsx";
 import { SKINS } from "../constants/constants.jsx";
-import useSound from "../hooks/useSound.js";
 
-export default function MainScreen({ solvePuzzle, solved }) {
+const MainScreen = forwardRef((props, ref) => {
     const { appSettings, Storage, Utils } = useContext(GlobalContext);
+
+    //Restore state based on props
+    const parsedRestoredChannel = Utils.parseChannelId(props.appState?.channel, appSettings.range);
+    let restoredChannel = parsedRestoredChannel ?? appSettings.initialChannelValidated;
+    let restoredVolume = props.appState?.volume ?? appSettings.initialVolumeNumber;
+    restoredVolume = Math.max(0,Math.min(1,restoredVolume));
 
     const audioContextRef = useRef(null);
     const masterGainRef = useRef(null);
-    const stationAudiosRef = useRef(null);
+    const channelAudiosRef = useRef(null);
     const noiseAudioRef = useRef(null);
 
     const audioContextStartedRef = useRef(false);
@@ -19,22 +24,59 @@ export default function MainScreen({ solvePuzzle, solved }) {
 
     const [radioState, setRadioState] = useState("off"); // possible values: "off" and "on". Start with "off" to force the radio to be switched on to allow autoplay
     const radioStateRef = useRef(radioState);
+    const radioReadyRef = useRef(false);
+    const radioStartTimeoutRef = useRef(null);
     
-    const [frequency, setFrequency] = useState(() => {
-        const stored = Storage?.getSetting("frequency");
-        return (stored !== null && stored !== undefined) ? parseFloat(stored) : (appSettings.range?.min);
-    });
-    const [volume, setVolume] = useState(() => {
-        const stored = Storage?.getSetting("volume");
-        return (stored !== null && stored !== undefined) ? parseFloat(stored) : 0.5;
-    });
+    const [channel, setChannel] = useState(restoredChannel);
+    const channelRef = useRef(channel);
+    const [volume, setVolume] = useState(restoredVolume);
+    const volumeRef = useRef(volume);
+
+    useImperativeHandle(ref, () => ({
+      getState: () => {
+        return {
+          skin: appSettings.skin,
+          radioState: radioStateRef.current,
+          channel: channelRef.current,
+          volume,
+        };
+      }
+    }));
 
     useEffect(() => {
-       _initRadioAudio();
+        _initRadioAudio();
+
+        return () => {
+          // Cancel pending radio startup
+          clearTimeout(radioStartTimeoutRef.current);
+          radioStartTimeoutRef.current = null;
+
+          // Stop all channel audio tracks
+          channelAudiosRef.current?.forEach(channel => {
+              channel.audio.pause();
+              channel.audio.src = "";
+          });
+
+          // Stop static noise
+          if (noiseAudioRef.current) {
+              noiseAudioRef.current.audio.pause();
+              noiseAudioRef.current.audio.src = "";
+          }
+
+          audioContextRef.current?.close();
+
+          audioContextRef.current = null;
+          audioContextStartedRef.current = false;
+          masterGainRef.current = null;
+          channelAudiosRef.current = null;
+          noiseAudioRef.current = null;
+          audioStartedRef.current = false;
+          radioReadyRef.current = false;
+        };
+
     }, []);
 
     function _initRadioAudio() {
-        Utils.log("_initRadioAudio");
         if(audioContextStartedRef.current === true) return;
 
         // Crear audio context
@@ -49,12 +91,12 @@ export default function MainScreen({ solvePuzzle, solved }) {
         // Save references
         audioContextRef.current = audioContext;
         masterGainRef.current = masterGain;
-        stationAudiosRef.current = [];
+        channelAudiosRef.current = [];
 
         // Crear audio de cada emisora
-        appSettings.validatedStations.forEach(station => {
-            const audio = new Audio(station.src);
-            audio.loop = true;
+        appSettings.validatedChannels.forEach(channel => {
+            const audio = new Audio(channel.src);
+            audio.loop = appSettings.enableLoopForChannels;
             audio.preload = "auto";
 
             // Crear source node
@@ -66,9 +108,9 @@ export default function MainScreen({ solvePuzzle, solved }) {
             source.connect(gain);
             gain.connect(masterGain);
 
-            // Save station
-            stationAudiosRef.current.push({
-                freq: station.freq,
+            // Save channel
+            channelAudiosRef.current.push({
+                id: channel.id,
                 audio,
                 source,
                 gain
@@ -91,21 +133,7 @@ export default function MainScreen({ solvePuzzle, solved }) {
         };
 
         audioContextStartedRef.current = true;
-        Utils.log("Audio initiated");
     }
-
-    // Save state to storage on change
-    useEffect(() => {
-        if (Storage) {
-            Storage.saveSetting("frequency", frequency);
-        }
-    }, [frequency]);
-
-    useEffect(() => {
-        if (Storage) {
-            Storage.saveSetting("volume", volume);
-        }
-    }, [volume]);
 
 
     ////////////
@@ -113,45 +141,54 @@ export default function MainScreen({ solvePuzzle, solved }) {
     ////////////
 
     useEffect(() => {
-        // Utils.log("Previous radioState:", radioStateRef.current);
-        // Utils.log("New radioState:", radioState);
-
-        if(audioContextRef.current === null){
-            return;
-        }
+        if (!audioContextRef.current) return;
 
         let audio;
-        if((radioStateRef.current === "off")&&(radioState !== "off")){
-          //Radio has been turned on
-          audio = document.getElementById("audio_radio_on");
-          _enablePlayingRadioAudio();
-          _playAudioForFrequency(frequency);
-        } else if((radioStateRef.current !== "off")&&(radioState === "off")){
-          //Radio has been turned off
-          audio = document.getElementById("audio_radio_off");
-          masterGainRef.current.gain.setTargetAtTime(
-            0,
-            audioContextRef.current.currentTime,
-            0.05
-          );
+
+        if (radioStateRef.current === "off" && radioState === "on") {
+            // Radio has been turned on
+            audio = document.getElementById("audio_radio_on");
+
+            radioReadyRef.current = false;
+            _enablePlayingRadioAudio();
+
+            radioStartTimeoutRef.current = setTimeout(() => {
+                radioStartTimeoutRef.current = null;
+
+                if (radioStateRef.current === "on") {
+                    radioReadyRef.current = true;
+                    _playAudioForChannel(channelRef.current);
+                }
+            }, 400);
+
+        } else if (radioStateRef.current === "on" && radioState === "off") {
+            // Radio has been turned off
+            audio = document.getElementById("audio_radio_off");
+
+            radioReadyRef.current = false;
+
+            clearTimeout(radioStartTimeoutRef.current);
+            radioStartTimeoutRef.current = null;
+
+            _updateRadioAudioVolume();
         }
 
-        if (audio != null) {
-          setTimeout(() => {
+        if (audio) {
             audio.currentTime = 0;
-            audio.play();
-          }, 0);
+            audio.play().catch(() => {});
         }
 
-        //Update previous value
         radioStateRef.current = radioState;
 
+        return () => {
+            clearTimeout(radioStartTimeoutRef.current);
+            radioStartTimeoutRef.current = null;
+        };
     }, [radioState]);
 
     async function _enablePlayingRadioAudio() {
         const audioContext = audioContextRef.current;
         if (!audioContext) return;
-
         await audioContext.resume();
 
         // Start audio tracks only once
@@ -159,7 +196,7 @@ export default function MainScreen({ solvePuzzle, solved }) {
             audioStartedRef.current = true;
 
             const audios = [
-                ...stationAudiosRef.current.map(station => station.audio),
+                ...channelAudiosRef.current.map(channel => channel.audio),
                 noiseAudioRef.current.audio
             ];
 
@@ -173,54 +210,53 @@ export default function MainScreen({ solvePuzzle, solved }) {
         }
     }
 
-    function _playAudioForFrequency(_frequency) {
+    function _playAudioForChannel(_channel) {
         const audioContext = audioContextRef.current;
-        const stations = stationAudiosRef.current;
+        const channels = channelAudiosRef.current;
         const noise = noiseAudioRef.current;
-
-        if (!audioContext || !stations || !noise) return;
+        if (!audioContext || !channels || !noise) return;
 
         const now = audioContext.currentTime;
         const fadeTime = 0.05;
 
-        const stationRange = appSettings.station_range;
-        const noiseRange = appSettings.station_noise_range > stationRange
-            ? appSettings.station_noise_range + 0.1
-            : stationRange;
+        const channelRange = appSettings.channelRangeNumber;
+        const noiseRange = appSettings.channelNoiseRangeNumber > channelRange
+            ? appSettings.channelNoiseRangeNumber + 0.1
+            : channelRange;
 
-        // Find the closest station within noise range
-        const activeStation = stations
-            .map(station => ({
-                station,
-                distance: Math.abs(station.freq - _frequency)
+        // Find the closest channel within noise range
+        const activeChannel = channels
+            .map(channel => ({
+                channel,
+                distance: Math.abs(channel.id - _channel)
             }))
             .filter(item => item.distance <= noiseRange)
             .sort((a, b) => a.distance - b.distance)[0];
 
-        let stationGain = 0;
+        let channelGain = 0;
         let noiseGain = 1;
 
-        if (activeStation) {
-            const distance = activeStation.distance;
+        if (activeChannel) {
+            const distance = activeChannel.distance;
 
-            if (distance <= stationRange) {
+            if (distance <= channelRange) {
                 // Clear reception without static noise
-                stationGain = 1;
+                channelGain = 1;
                 noiseGain = 0;
             } else {
-                // Gradually mix station audio with static noise
-                const progress = (distance - stationRange) /
-                    (noiseRange - stationRange);
+                // Gradually mix channel audio with static noise
+                const progress = (distance - channelRange) /
+                    (noiseRange - channelRange);
 
-                stationGain = 1 - progress;
+                channelGain = 1 - progress;
                 noiseGain = progress;
             }
         }
 
-        // Update station gains
-        stations.forEach(station => {
-            station.gain.gain.setTargetAtTime(
-                station === activeStation?.station ? stationGain : 0,
+        // Update channel gains
+        channels.forEach(channel => {
+            channel.gain.gain.setTargetAtTime(
+                channel === activeChannel?.channel ? channelGain : 0,
                 now,
                 fadeTime
             );
@@ -232,25 +268,35 @@ export default function MainScreen({ solvePuzzle, solved }) {
             now,
             fadeTime
         );
+
+        _updateRadioAudioVolume();
     }
-    
-    useEffect(() => {
+
+    function _updateRadioAudioVolume() {
         const audioContext = audioContextRef.current;
         const masterGain = masterGainRef.current;
         if (!audioContext || !masterGain) return;
 
-        // Update master volume according to radio state
+        // Update master volume only when the radio is ready
         masterGain.gain.setTargetAtTime(
-            radioState === "on" ? volume : 0,
+            radioStateRef.current === "on" && radioReadyRef.current
+                ? volumeRef.current
+                : 0,
             audioContext.currentTime,
             0.05
         );
-    }, [radioState, volume]);
+    }
+    
+    useEffect(() => {
+        volumeRef.current = volume;
+        _updateRadioAudioVolume();
+    }, [volume]);
 
     useEffect(() => {
-        if (radioState !== "on") return;
-        _playAudioForFrequency(frequency);
-    }, [frequency]);
+        channelRef.current = channel;
+        if ((radioState !== "on") || (radioReadyRef.current===false)) return;
+        _playAudioForChannel(channel);
+    }, [channel]);
 
     const lastClickRef = useRef(0);
     const onClickPowerButton = () => {
@@ -266,29 +312,31 @@ export default function MainScreen({ solvePuzzle, solved }) {
     return (
         <div className={`mainScreen ${skinClass}`}>
             {SKINS.STANDARD === appSettings.skin ? <RadioDevice
-                frequency={frequency}
-                setFrequency={setFrequency}
+                frequency={channel}
+                setFrequency={setChannel}
                 volume={volume}
                 setVolume={setVolume}
                 minFreq={appSettings.range.min}
                 maxFreq={appSettings.range.max}
                 step={appSettings.step}
-                solved={solved}
+                solved={props.solved}
                 radioState={radioState}
                 onClickPowerButton={onClickPowerButton}
             /> : <RadioDeviceImg
                 config={appSettings}
-                frequency={frequency}
-                setFrequency={setFrequency}
+                frequency={channel}
+                setFrequency={setChannel}
                 volume={volume}
                 setVolume={setVolume}
                 minFreq={appSettings.range.min}
                 maxFreq={appSettings.range.max}
                 step={appSettings.step}
-                solved={solved}
+                solved={props.solved}
                 radioState={radioState}
                 onClickPowerButton={onClickPowerButton}
             />}
         </div>
     );
-}
+});
+
+export default MainScreen;

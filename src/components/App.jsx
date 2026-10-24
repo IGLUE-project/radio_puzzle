@@ -7,10 +7,15 @@ import MainScreen from "./MainScreen.jsx";
 
 export default function App() {
   const { escapp, setEscapp, appSettings, setAppSettings, Storage, setStorage, Utils, I18n } = useContext(GlobalContext);
+  const mainScreenRef = useRef(null);
+  const storageRef = useRef(null);
+  const appSettingsRef = useRef(null);
   const hasExecutedEscappValidation = useRef(false);
   const [loading, setLoading] = useState(true);
   const [screen, setScreen] = useState(MAIN_SCREEN);
   const prevScreen = useRef(screen);
+  const [appState, setAppState] = useState({});
+  const solution = useRef(null);
   const [solved, setSolved] = useState(false);
   const html5AudioExtensions = [
       "mp3",
@@ -41,6 +46,7 @@ export default function App() {
   useEffect(() => {
     if (!hasExecutedEscappValidation.current && escapp !== null && appSettings !== null && Storage !== null) {
       hasExecutedEscappValidation.current = true;
+      storageRef.current = Storage;
 
       escapp.validate((success, erState) => {
         try {
@@ -63,9 +69,67 @@ export default function App() {
     }
   }, [screen]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      // const windowWidth = window.innerWidth;
+      // const windowHeight = window.innerHeight;
+
+      // let contentPercentage = 1;
+      // const aspectRatio = 16/9;
+      // let width = windowWidth * contentPercentage;
+      // let height = width / aspectRatio;
+
+      // if (height > windowHeight * contentPercentage) {
+      //   height = windowHeight * contentPercentage;
+      //   width = height * aspectRatio;
+      // }
+
+      // setSize({ width, height });
+    };
+    const handlePageHide = () => {
+      saveAppState();
+    };
+
+    handleResize();
+    // window.addEventListener("resize", handleResize);
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      // window.removeEventListener("resize", handleResize);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+
+  }, []);
+
+  useEffect(() => {
+    appSettingsRef.current = appSettings;
+  }, [appSettings]);
+
   function restoreAppState(erState) {
-    Utils.log("Restore application state based on escape room state:", erState);
-    //TO DO
+    restoreAppStateFromLocalStorage(erState);
+  }
+
+  function restoreAppStateFromLocalStorage(erState) {
+    if (appSettings.keepState!==true) return;
+    if (!Storage) return;
+    let stateToRestore = Storage.getSetting("state");
+    if (stateToRestore) {
+      if((appSettingsRef.current !== null)&&(stateToRestore.skin !== appSettingsRef.current.skin)){
+        Storage.removeSetting("state");
+        return;
+      }
+      Utils.log("Restore app state", stateToRestore);
+      setAppState(stateToRestore);
+    }
+  }
+
+  function saveAppState() {
+    if (appSettingsRef.current?.keepState !== true) return;
+    if (!storageRef.current) return;
+    const currentAppState = mainScreenRef.current?.getState?.();
+    if (!currentAppState) return;
+    Utils.log("Save app state in local storage", currentAppState);
+    storageRef.current.saveSetting("state", currentAppState);
   }
 
   function processAppSettings(_appSettings,_escappSettings){
@@ -91,29 +155,40 @@ export default function App() {
       _appSettings.actionAfterSolve = "PLAY_AUDIO";
     }
 
-    _appSettings.enableLoopForStations = (_appSettings.enableLoopForStations !== "FALSE");
+    _appSettings.enableLoopForChannels = (_appSettings.enableLoopForChannels !== "FALSE");
     _appSettings.keepState = (_appSettings.keepState !== "FALSE");
 
     let initialVolume = Utils.parseNumberFromSetting(_appSettings.initialVolume);
-    if(initialVolume === null){
+    if (initialVolume === null || !Number.isFinite(initialVolume)) {
       initialVolume = 50;
     }
     _appSettings.initialVolumeNumber = Math.min(1,Math.max(0,initialVolume/100));
 
-    let initialFrequency = Utils.parseNumberFromSetting(_appSettings.initialFrequency);
-    if(initialFrequency === null){
-      initialFrequency = _appSettings.range.min;
-    }
-    _appSettings.initialFrequency = Math.min(_appSettings.range.max,Math.max(_appSettings.range.min,initialFrequency));
+    _appSettings.initialChannelValidated = Utils.parseChannelId(_appSettings.initialChannel, _appSettings.range) ?? _appSettings.range.min;
 
-    _appSettings.validatedStations = [];
-    if (_appSettings.stations instanceof Array) {
-        _appSettings.stations.forEach(station => {
-            const validatedStation = _validateStation(station, _appSettings);
-            if (validatedStation !== undefined) {
-                _appSettings.validatedStations.push(validatedStation);
-            }
-        });
+    let channelRange = Utils.parseNumberFromSetting(_appSettings.channelRange);
+    if (channelRange === null || !Number.isFinite(channelRange)) {
+        channelRange = DEFAULT_APP_SETTINGS.channelRange;
+    }
+    _appSettings.channelRangeNumber = Math.max(0, channelRange);
+
+    let channelNoiseRange = Utils.parseNumberFromSetting(_appSettings.channelNoiseRange);
+    if (channelNoiseRange === null || !Number.isFinite(channelNoiseRange)) {
+        channelNoiseRange = DEFAULT_APP_SETTINGS.channelNoiseRange;
+    }
+    _appSettings.channelNoiseRangeNumber = Math.max(0, channelNoiseRange);
+    if(_appSettings.channelNoiseRangeNumber <= _appSettings.channelRangeNumber){
+      _appSettings.channelNoiseRangeNumber = 0;
+    }
+
+    _appSettings.validatedChannels = [];
+    if (Array.isArray(_appSettings.channels)) {
+      _appSettings.channels.forEach(channel => {
+          const validatedChannel = _validateChannel(channel, _appSettings);
+          if (validatedChannel !== undefined && !_appSettings.validatedChannels.some(existing => existing.id === validatedChannel.id)) {
+              _appSettings.validatedChannels.push(validatedChannel);
+          }
+      });
     }
 
     if (typeof _appSettings.backgroundImg === "string" && _appSettings.backgroundImg.trim() !== "" && _appSettings.backgroundImg !== "NONE") {
@@ -127,40 +202,39 @@ export default function App() {
     _appSettings = Utils.checkUrlProtocols(_appSettings);
 
     Utils.preloadImages([_appSettings.backgroundMessage]);
-    Utils.log("App settings:", _appSettings);
     return _appSettings;
   }
 
-  function _validateStation(station, _appSettings) {
-      if (!station || typeof station !== "object" || Array.isArray(station)) {
+  function _validateChannel(channel, _appSettings) {
+      if (!channel || typeof channel !== "object" || Array.isArray(channel)) {
           return undefined;
       }
 
       //Validate frequency
-      if (typeof station.freq !== "string") {
+      if (typeof channel.id !== "string") {
           return undefined;
       }
-      const freq = Utils.parseNumberFromSetting(station.freq);
-      if (freq === null || !Number.isFinite(freq) || freq < _appSettings.range.min || freq > _appSettings.range.max) {
+      const channelId = Utils.parseNumberFromSetting(channel.id);
+      if (channelId === null || !Number.isFinite(channelId) || channelId < _appSettings.range.min || channelId > _appSettings.range.max) {
           return undefined;
       }
 
       //Validate source
-      if (typeof station.src !== "string" || !station.src.trim()) {
+      if (typeof channel.src !== "string" || !channel.src.trim()) {
           return undefined;
       }
-      const src = station.src.trim();
+      const src = channel.src.trim();
       const extension = src.split(/[?#]/)[0].split(".").pop().toLowerCase();
       if (!html5AudioExtensions.includes(extension)) {
           return undefined;
       }
 
-      const validatedStation = {
-          freq: freq,
-          src
+      const validatedChannel = {
+          "id": channelId,
+          "src": src
       };
 
-      return validatedStation;
+      return validatedChannel;
   }
 
   function solvePuzzle(_solution) {
@@ -216,7 +290,7 @@ export default function App() {
             width: "100%",
           }}
         >
-          <MainScreen solvePuzzle={solvePuzzle} solved={solved} />
+          <MainScreen ref={mainScreenRef} appState={appState} saveAppState={saveAppState} solvePuzzle={solvePuzzle} solved={solved} />
         </div>
       ),
     }
