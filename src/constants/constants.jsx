@@ -1,34 +1,32 @@
 export const DEFAULT_APP_SETTINGS = {
-  skin: "MODERN", //skin can be STANDARD
-  backgroundImg: "NONE", //background can be "NONE" or a URL.
-  whiteNoiseSound: "/sounds/white_noise.wav",
-  actionWhenLoadingIfSolved: "FALSE",
-  stations: [
-  ],
+  //Authors settings
+  skin: "STANDARD",
+  backgroundImg: "images/background.png",
+  actionAfterSolve: "PLAY_AUDIO",
+  enableLoopForChannels: "TRUE",
+  initialFrequency: "87",
+  initialVolume: "50",
+
+  //Internal
+  // whiteNoiseSound: "/sounds/white_noise.wav",
   range: { min: 87.0, max: 108.0 },
   step: 0.1,
   tolerance: 0.3,
 };
 
-export const ESCAPP_CLIENT_SETTINGS = {
-  imagesPath: "./images/",
-};
-export const MAIN_SCREEN = "MAIN_SCREEN";
-
-export const THEMES = {
+export const SKINS = {
   STANDARD: "STANDARD",
   RETRO: "RETRO",
   MODERN: "MODERN",
 };
 
-export const THEME_ASSETS = {
-  [THEMES.STANDARD]: {
-    // Standard CSS-based theme assets
+export const SKIN_SETTINGS = {
+  [SKINS.STANDARD]: {
   },
-  [THEMES.RETRO]: {
-    radioImg: "/images/radio_retro.png",
-    buttonImg: "/images/button_retro.png",
-    displayImg: "/images/display_retro.png",
+  [SKINS.RETRO]: {
+    radioImg: "images/radio_retro.png",
+    buttonImg: "images/button_retro.png",
+    displayImg: "images/display_retro.png",
     aspectRatio: "786/546",
     displayPanel: {
       top: "26.5%",
@@ -43,9 +41,9 @@ export const THEME_ASSETS = {
       height: "12.5%",
     },
   },
-  [THEMES.MODERN]: {
-    radioImg: "/images/radio_modern.png",
-    buttonImg: "/images/button_modern.png",
+  [SKINS.MODERN]: {
+    radioImg: "images/radio_modern.png",
+    buttonImg: "images/button_modern.png",
     aspectRatio: "8/5",
     displayPanel: {
       top: "43.5%",
@@ -59,8 +57,10 @@ export const THEME_ASSETS = {
       width: "25%",
       height: "12%",
     },
-
-
   }
 };
 
+export const ESCAPP_CLIENT_SETTINGS = {
+  imagesPath: ".images/",
+};
+export const MAIN_SCREEN = "MAIN_SCREEN";

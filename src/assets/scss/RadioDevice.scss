@@ -1,6 +1,17 @@
 @use 'sass:color';
 @use 'variables';
 
+
+.mainScreen {
+  container-type: size;
+
+  .radio-device {
+    position: relative;
+    width: min(80cqw, 142.222cqh);
+    aspect-ratio: 16 / 9;
+  }
+}
+
 .skin-standard {
     display: flex;
     justify-content: center;
@@ -9,13 +20,13 @@
     width: 100%;
 
     .radio-device {
-        width: 900px;
-        height: 550px;
         position: relative;
-        padding: 50px;
+        box-sizing: border-box;
+        padding: min(5cqw, 8cqh);
         display: flex;
         flex-direction: column;
-        gap: 40px;
+        gap: 0.5cqw;
+
 
         background-color: variables.$grey;
         background-image:
@@ -105,7 +116,7 @@
         }
 
         .radio-top {
-            flex: 1;
+            flex: 3;
             display: flex;
             gap: 40px;
             position: relative;
@@ -139,19 +150,21 @@
         }
 
         .display-panel {
+            container-type: size;
             flex: 1.1;
             background: variables.$screen-bg;
             border-radius: 6px;
-            border-top: 2px solid variables.$black;
-            border-left: 2px solid variables.$black;
-            border-bottom: 2px solid #333;
-            border-right: 2px solid #333;
+            border-top: 0.2cqw solid variables.$black;
+            border-left: 0.2cqw solid variables.$black;
+            border-bottom: 0.2cqw solid #333;
+            border-right: 0.2cqw solid #333;
             box-shadow: inset 0 0 20px rgba(variables.$black, 1);
 
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: 25px 40px;
+            box-sizing: border-box;
+            padding: 0.5cqw 1.0cqw;
             position: relative;
             overflow: hidden;
 
@@ -165,41 +178,51 @@
             }
 
             .lcd-display {
+                flex: 1;
                 font-family: variables.$font-family-display;
                 color: variables.$led-color;
-                font-size: 3.8rem;
+                font-size: min(12cqw, 20cqh);
                 text-align: center;
                 text-shadow: variables.$led-text-shadow;
-                margin-bottom: 25px;
+                margin-bottom: 0;
                 display: flex;
                 align-items: baseline;
                 justify-content: center;
                 position: relative;
                 z-index: 5;
                 background: rgba(variables.$black, 0.5);
-                padding: 10px;
-                border: 1px solid variables.$grey;
-                border-radius: 4px;
+                box-sizing: border-box;
+                padding: 3cqw;
+                border: 1cqw solid variables.$grey;
+                border-radius: 3cqw;
                 box-shadow: inset 0 0 5px variables.$black;
 
                 .mhz {
-                    font-size: 1rem;
-                    margin-left: 10px;
+                    font-size: 6cqw;
+                    margin-left: 3cqw;
                     opacity: 0.8;
                     color: color.adjust(variables.$led-color, $saturation: -10%, $lightness: -10%);
                     text-shadow: none;
                 }
             }
 
+            .scale-container-wrapper {
+                position: relative;
+                flex: 1.2;
+                width: 100%;
+                margin-top: 2cqw;
+                background: linear-gradient(to right, variables.$grey, #333, variables.$grey);
+                border-radius: 3cqw;
+                border: 1cqw solid variables.$dark-grey;
+                box-shadow: inset 0 2cqw 3cqw rgba(variables.$black, 0.8);
+                padding: 0 1cqw 0 1cqw;
+                display: flex;
+            }
+
             .scale-container {
                 position: relative;
-                height: 60px;
-                width: 100%;
-                margin-top: 5px;
-                background: linear-gradient(to right, variables.$grey, #333, variables.$grey);
-                border-radius: 4px;
-                border: 1px solid variables.$dark-grey;
-                box-shadow: inset 0 2px 5px rgba(variables.$black, 0.8);
+                width: 98%;
+                margin: 0% 1% 0% 1%;
 
                 .scale-marks {
                     position: absolute;
@@ -207,11 +230,12 @@
                     display: flex;
                     justify-content: space-between;
                     align-items: flex-end;
-                    padding: 0 15px 10px 15px;
+                    box-sizing: border-box;
+                    padding: 0 0 1cqw 0;
 
                     span {
-                        width: 1px;
-                        height: 8px;
+                        width: 0.5cqw;
+                        height: 3cqw;
                         background: #888;
                         display: block;
                     }
@@ -219,10 +243,11 @@
                     p {
                         color: #bbb;
                         font-family: variables.$font-family-base;
-                        font-size: 0.65rem;
+                        font-size: 3cqw;
                         position: absolute;
-                        bottom: 30px;
+                        top: 0;
                         font-weight: 600;
+                        margin: 1cqw;
                     }
                 }
 
@@ -230,7 +255,8 @@
                     position: absolute;
                     top: 2px;
                     bottom: 2px;
-                    width: 3px;
+                    width: 1cqw;
+                    margin-left: -0.5cqw;
                     background: variables.$needle-color;
                     z-index: 10;
                     box-shadow: 1px 0 2px rgba(variables.$black, 0.5);
@@ -240,13 +266,13 @@
         }
 
         .radio-controls {
-            height: 130px;
+            flex: 1;
             background: #252525;
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: space-around;
-            padding: 0 60px;
+            padding: 0 1cqw;
             border-top: 1px solid variables.$dark-grey;
             border-bottom: 1px solid #3a3a3a;
             box-shadow:
@@ -254,19 +280,23 @@
             z-index: 1;
 
             .control-group {
+                container-type: inline-size;
                 flex: 1;
-                max-width: 380px;
                 display: flex;
                 flex-direction: column;
-                gap: 15px;
+                gap: 1.3cqh;
+
+                &:first-child {
+                    margin-right: 5%;
+                }
 
                 label {
                     color: #aaa;
-                    font-size: 0.75rem;
+                    font-size: min(7cqw, 2.5cqh);
                     text-transform: uppercase;
-                    letter-spacing: 1.5px;
+                    letter-spacing: 0.8cqw;
                     font-weight: 700;
-                    margin-left: 2px;
+                    margin-left: 1cqw;
                     text-shadow: 0 -1px 0 variables.$black;
                 }
             }
@@ -278,7 +308,7 @@
             width: 100%;
             background: transparent;
             cursor: pointer;
-            height: 30px;
+            height: 5cqh;
             position: relative;
             z-index: 2;
 
@@ -288,34 +318,26 @@
 
             &::-webkit-slider-runnable-track {
                 width: 100%;
-                height: 6px;
+                height: 2cqh;
                 background: variables.$dark-grey;
                 border-radius: 3px;
                 box-shadow:
                     inset 0 1px 2px rgba(variables.$black, 0.9),
                     0 1px 0 rgba(variables.$white, 0.05);
                 border: 1px solid variables.$black;
-                margin-top: 12px;
+                margin-top: 2cqh;
             }
 
             &::-webkit-slider-thumb {
                 -webkit-appearance: none;
-                height: 28px;
-                width: 40px;
-                background: linear-gradient(to bottom, #444, #222);
-                margin-top: -12px;
+                height: 4cqh;
+                width: 12%;
+                margin-top: -1.7cqh;
                 border-radius: 4px;
-                box-shadow:
-                    0 4px 6px rgba(variables.$black, 0.7),
-                    inset 0 1px 0 rgba(variables.$white, 0.2);
                 border: 1px solid variables.$dark-grey;
                 position: relative;
-
-                background-image: repeating-linear-gradient(to right,
-                        transparent,
-                        transparent 4px,
-                        rgba(variables.$black, 0.5) 5px,
-                        rgba(variables.$white, 0.05) 6px);
+                background: linear-gradient(to bottom, #333, variables.$dark-grey);
+                box-shadow: 0 2px 4px rgba(variables.$black, 0.9);
             }
 
             &:active::-webkit-slider-thumb {
@@ -325,7 +347,7 @@
 
             &::-moz-range-track {
                 width: 100%;
-                height: 6px;
+                height: 2cqh;
                 background: variables.$dark-grey;
                 border-radius: 3px;
                 box-shadow: inset 0 1px 2px rgba(variables.$black, 0.9);
@@ -333,11 +355,11 @@
             }
 
             &::-moz-range-thumb {
-                height: 28px;
-                width: 40px;
-                background: linear-gradient(to bottom, #444, #222);
+                height: 4cqh;
+                width: 12%;
                 border-radius: 4px;
-                box-shadow: 0 4px 6px rgba(variables.$black, 0.7);
+                background: linear-gradient(to bottom, #333, variables.$dark-grey);
+                box-shadow: 0 2px 4px rgba(variables.$black, 0.9);
                 border: 1px solid variables.$dark-grey;
             }
         }

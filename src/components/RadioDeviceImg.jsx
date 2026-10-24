@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import '../assets/scss/RadioDeviceImg.scss';
-import { THEMES } from '../constants/constants';
+import { SKINS } from '../constants/constants';
 import RotaryKnob from './RotaryKnob';
 
 export default function RadioDeviceImg({
@@ -118,7 +118,7 @@ export default function RadioDeviceImg({
         <div className="radio-device" ref={radioRef} style={{ backgroundImage: `url(${config.radioImg})`, aspectRatio: config.aspectRatio }}>
             <div className="radio-top" >
                 <div className="display-panel" style={panel}>
-                    {config.skin === THEMES.MODERN ? modernPanel : retroPanel}
+                    {config.skin === SKINS.MODERN ? modernPanel : retroPanel}
                 </div>
             </div>
 

@@ -3,12 +3,12 @@ import { useState, useRef, useEffect, useContext } from "react";
 import { GlobalContext } from "./GlobalContext.jsx";
 import RadioDevice from "./RadioDevice.jsx";
 import RadioDeviceImg from "./RadioDeviceImg.jsx";
-import { THEMES } from "../constants/constants.jsx";
+import { SKINS } from "../constants/constants.jsx";
 import useSound from "../hooks/useSound.js";
 
 export default function MainScreen({ solvePuzzle, solved }) {
     const { appSettings: config, Storage } = useContext(GlobalContext);
-    const winSound = useSound("/sounds/win.mp3");
+    const winSound = useSound("/sounds/solution_ok.mp3");
 
     const audioCtxRef = useRef(null);
     const staticNodeRef = useRef(null);
@@ -162,7 +162,7 @@ export default function MainScreen({ solvePuzzle, solved }) {
 
     return (
         <div className={`mainScreen ${skinClass}`} onClick={handleInteraction}>
-            {THEMES.STANDARD === config.skin ? <RadioDevice
+            {SKINS.STANDARD === config.skin ? <RadioDevice
                 frequency={frequency}
                 setFrequency={setFrequency}
                 volume={volume}

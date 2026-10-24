@@ -24,15 +24,17 @@ export default function RadioDevice({
                     <div className="lcd-display">
                         {frequency.toFixed(1)} <span className="mhz">MHz</span>
                     </div>
-                    <div className="scale-container">
-                        <div className="scale-marks">
-                            {[0, 25, 50, 75, 100].map(p => (
-                                <span key={p} ></span>
-                            ))}
-                            <p style={{ position: 'absolute', left: '0%' }}>{minFreq}</p>
-                            <p style={{ position: 'absolute', right: '0%' }}>{maxFreq}</p>
+                    <div className="scale-container-wrapper">
+                        <div className="scale-container">
+                            <div className="scale-marks">
+                                {[0, 12.5, 25, 37.5, 50, 62.5, 75, 87.5, 100].map(p => (
+                                    <span key={p} ></span>
+                                ))}
+                                <p style={{ position: 'absolute', left: '0%' }}>{minFreq}</p>
+                                <p style={{ position: 'absolute', right: '0%' }}>{maxFreq}</p>
+                            </div>
+                            <div className="needle" style={{ left: `${calculateNeedlePosition()}%` }}></div>
                         </div>
-                        <div className="needle" style={{ left: `${calculateNeedlePosition()}%` }}></div>
                     </div>
                 </div>
             </div>

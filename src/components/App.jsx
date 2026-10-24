@@ -1,18 +1,12 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import "./../assets/scss/app.scss";
 
-import {
-  DEFAULT_APP_SETTINGS,
-  ESCAPP_CLIENT_SETTINGS,
-  MAIN_SCREEN,
-  THEME_ASSETS,
-} from "../constants/constants.jsx";
+import { DEFAULT_APP_SETTINGS, ESCAPP_CLIENT_SETTINGS, MAIN_SCREEN, SKIN_SETTINGS } from "../constants/constants.jsx";
 import { GlobalContext } from "./GlobalContext.jsx";
 import MainScreen from "./MainScreen.jsx";
 
 export default function App() {
-  const { escapp, setEscapp, appSettings, setAppSettings, Storage, setStorage, Utils, I18n } =
-    useContext(GlobalContext);
+  const { escapp, setEscapp, appSettings, setAppSettings, Storage, setStorage, Utils, I18n } = useContext(GlobalContext);
   const hasExecutedEscappValidation = useRef(false);
 
   const [loading, setLoading] = useState(true);
@@ -92,7 +86,7 @@ export default function App() {
       _appSettings = {};
     }
 
-    let skinSettings = THEME_ASSETS[_appSettings.skin] || {};
+    let skinSettings = SKIN_SETTINGS[_appSettings.skin] || {};
 
     let DEFAULT_APP_SETTINGS_SKIN = Utils.deepMerge(DEFAULT_APP_SETTINGS, skinSettings);
 
