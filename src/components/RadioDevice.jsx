@@ -1,15 +1,9 @@
+import { useContext, useEffect, useRef, useState } from "react";
+import { GlobalContext } from "./GlobalContext.jsx";
 import '../assets/scss/RadioDevice.scss';
 
-export default function RadioDevice({
-    frequency,
-    setFrequency,
-    volume,
-    setVolume,
-    minFreq,
-    maxFreq,
-    step,
-    solved
-}) {
+export default function RadioDevice({frequency, setFrequency, volume, setVolume, minFreq, maxFreq, step, solved}) {
+    const { appSettings, Utils, I18n } = useContext(GlobalContext);
 
     const calculateNeedlePosition = () => {
         const pct = ((frequency - minFreq) / (maxFreq - minFreq)) * 100;
@@ -21,8 +15,10 @@ export default function RadioDevice({
             <div className="radio-top">
                 <div className="speaker-grill"></div>
                 <div className="display-panel">
-                    <div className="lcd-display">
-                        {frequency.toFixed(1)} <span className="mhz">MHz</span>
+                    <div className="lcd-display-wrapper">
+                        <div className="lcd-display">
+                            {frequency.toFixed(1)} <span className="mhz">MHz</span>
+                        </div>
                     </div>
                     <div className="scale-container-wrapper">
                         <div className="scale-container">
@@ -37,11 +33,16 @@ export default function RadioDevice({
                         </div>
                     </div>
                 </div>
+                <div className="power-button">
+                    <div className="power-button-image">
+                        <img src="images/power_button_standard.png"/>
+                    </div>
+                </div>
             </div>
 
             <div className="radio-controls">
                 <div className="control-group">
-                    <label>Tuner</label>
+                    <label>{I18n.getTrans("i.tuning")}</label>
                     <input
                         style={{ cursor: solved ? 'not-allowed' : 'pointer' }}
                         type="range"
@@ -57,7 +58,7 @@ export default function RadioDevice({
                     />
                 </div>
                 <div className="control-group">
-                    <label>Volume</label>
+                    <label>{I18n.getTrans("i.volume")}</label>
                     <input
                         type="range"
                         min="0"

@@ -118,10 +118,10 @@
         .radio-top {
             flex: 3;
             display: flex;
-            gap: 40px;
+            gap: 1cqw;
             position: relative;
             z-index: 1;
-            padding: 0 10px;
+            padding: 0;
         }
 
         .speaker-grill {
@@ -146,6 +146,17 @@
                 inset: 0;
                 background: linear-gradient(135deg, rgba(variables.$white, 0.02), transparent);
                 pointer-events: none;
+            }
+        }
+
+        .power-button {
+            flex: 0.2;
+            .power-button-image{
+                img {
+                    cursor: pointer;
+                    height: 100%;
+                    width: 100%;
+                }
             }
         }
 
@@ -175,6 +186,17 @@
                 background: variables.$glass-reflection;
                 pointer-events: none;
                 z-index: 20;
+            }
+
+            .lcd-display-wrapper {
+                flex: 1;
+                flex-direction: row;
+                margin-bottom: 0;
+                display: flex;
+                align-items: baseline;
+                justify-content: center;
+                position: relative;
+                z-index: 5;
             }
 
             .lcd-display {

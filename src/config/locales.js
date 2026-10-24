@@ -1,11 +1,14 @@
 export let LOCALES = {
   en: {
-    "i.unlocked": "Unlocked!",
+  	"i.tuning": "TUNING",
+  	"i.volume": "VOLUME"
   },
   es: {
-    "i.unlocked": "¡Desbloqueado!",
+  	"i.tuning": "FRECUENCIA",
+  	"i.volume": "VOLUMEN"
   },
   sr: {
-    "i.unlocked": "Unlocked!",
+    "i.tuning": "FREKVENCIJA",
+    "i.volume": "GLASNOĆA"
   },
 };
