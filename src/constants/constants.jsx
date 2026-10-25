@@ -1,7 +1,7 @@
 export const DEFAULT_APP_SETTINGS = {
   //Authors settings
   skin: "STANDARD",
-  backgroundImg: "images/background.png",
+  backgroundImg: "images/background_standard.png",
   actionAfterSolve: "PLAY_AUDIO",
   enableLoopForChannels: "TRUE",
   initialChannel: "87",
@@ -29,6 +29,7 @@ export const SKIN_SETTINGS = {
   [SKINS.STANDARD]: {
   },
   [SKINS.RETRO]: {
+    backgroundImg: "images/background_retro.png",
     soundRadioOn: "sounds/retro_on_off.mp3",
     soundRadioOff: "sounds/retro_on_off.mp3",
     range: { min: 88.0, max: 108.0 },
