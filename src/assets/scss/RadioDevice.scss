@@ -1,17 +1,6 @@
 @use 'sass:color';
 @use 'variables';
 
-
-.mainScreen {
-  container-type: size;
-
-  .radio-device {
-    position: relative;
-    width: min(80cqw, 142.222cqh);
-    aspect-ratio: 16 / 9;
-  }
-}
-
 .skin-standard {
     display: flex;
     justify-content: center;
@@ -21,6 +10,8 @@
 
     .radio-device {
         position: relative;
+        width: min(80cqw, 142.222cqh);
+        aspect-ratio: 16 / 9;
         box-sizing: border-box;
         padding: min(5cqw, 8cqh);
         display: flex;

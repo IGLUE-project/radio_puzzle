@@ -13,6 +13,10 @@ const MainScreen = forwardRef((props, ref) => {
     let restoredChannel = parsedRestoredChannel ?? appSettings.initialChannelValidated;
     let restoredVolume = props.appState?.volume ?? appSettings.initialVolumeNumber;
     restoredVolume = Math.max(0,Math.min(1,restoredVolume));
+    if(appSettings.skin === "RETRO"){
+      // Retro radio is turned on and off using the volume control
+      restoredVolume = 0;
+    }
 
     const audioContextRef = useRef(null);
     const masterGainRef = useRef(null);
@@ -345,6 +349,22 @@ const MainScreen = forwardRef((props, ref) => {
     }
     
     useEffect(() => {
+        if (appSettings.skin === "RETRO") {
+          // Retro radio is turned on and off using the volume control
+          let audio;
+          if (volume > 0.01 && volumeRef.current <= 0.01 && radioState === "off") {
+              audio = document.getElementById("audio_radio_on");
+              setRadioState("on");
+          } else if (volume <= 0.01 && volumeRef.current > 0.01 && radioState === "on") {
+              audio = document.getElementById("audio_radio_off");
+              setRadioState("off");
+          }
+          if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+          }
+        }
+
         volumeRef.current = volume;
         _updateRadioAudioVolume();
     }, [volume]);

@@ -2,12 +2,12 @@
 
 export let ESCAPP_APP_SETTINGS = {
   //Settings that can be specified by the authors
-  skin: "STANDARD", //skin can be "STANDARD", "MODERN" or "RETRO".
+  skin: "STANDARD", //skin can be "STANDARD" or "RETRO".
   // backgroundImg: "NONE", //background can be "NONE" or a URL.
   actionAfterSolve: "PLAY_AUDIO", //actionAfterSolve can be "NONE" or "PLAY_AUDIO".
   enableLoopForChannels: "TRUE", //Whether the channel audios will play on a loop
   initialChannel: "87", //Initial channel of the radio (87-108 by default)
-  initialVolume: "50", //Initial volume of the radio (0-100)
+  initialVolume: "50", //Initial volume of the radio (0-100). Not available for RETRO skin.
   keepState: "TRUE", //Enable keeping the radio state when the app is closed
 
   channels: [

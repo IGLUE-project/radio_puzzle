@@ -29,10 +29,12 @@ export const SKIN_SETTINGS = {
   [SKINS.STANDARD]: {
   },
   [SKINS.RETRO]: {
+    soundRadioOn: "sounds/retro_on_off.mp3",
+    soundRadioOff: "sounds/retro_on_off.mp3",
+    range: { min: 88.0, max: 108.0 },
     radioImg: "images/radio_retro.png",
     buttonImg: "images/button_retro.png",
     displayImg: "images/display_retro.png",
-    aspectRatio: "786/546",
     displayPanel: {
       top: "26.5%",
       left: "24%",
@@ -49,7 +51,6 @@ export const SKIN_SETTINGS = {
   [SKINS.MODERN]: {
     radioImg: "images/radio_modern.png",
     buttonImg: "images/button_modern.png",
-    aspectRatio: "8/5",
     displayPanel: {
       top: "43.5%",
       left: "35%",

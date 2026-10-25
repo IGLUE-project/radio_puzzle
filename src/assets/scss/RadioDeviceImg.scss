@@ -1,9 +1,23 @@
 @use 'variables';
 
+.skin-retro {
+    .radio-device {
+        width: min(80cqw, 123cqh);
+        aspect-ratio: 786/546;
+    }
+}
+
+.skin-modern {
+    .radio-device {
+        width: min(80cqw, 123cqh);
+        aspect-ratio: 8/5;
+    }
+}
+
 .skin-modern,
 .skin-retro {
     .radio-device {
-        width: 60%;
+        position: relative;
         background-size: 100% 100%;
         background-repeat: no-repeat;
         background-position: center;

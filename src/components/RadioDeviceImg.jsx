@@ -1,19 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useContext, useEffect, useRef, useState } from "react";
+import { GlobalContext } from "./GlobalContext.jsx";
 import '../assets/scss/RadioDeviceImg.scss';
 import { SKINS } from '../constants/constants';
 import RotaryKnob from './RotaryKnob';
 
-export default function RadioDeviceImg({
-    config,
-    frequency,
-    setFrequency,
-    volume,
-    setVolume,
-    minFreq,
-    maxFreq,
-    step,
-    solved
-}) {
+export default function RadioDeviceImg({config, frequency, setFrequency, volume, setVolume, minFreq, maxFreq, step, solved }) {
+    const { appSettings, Utils, I18n } = useContext(GlobalContext);
     const [showVolume, setShowVolume] = useState(false);
     const radioRef = useRef(null);
     const [radioWidth, setRadioWidth] = useState(0);
@@ -145,6 +137,8 @@ export default function RadioDeviceImg({
                     />
                 </div>
             </div>
+            {appSettings.soundRadioOn && <audio id="audio_radio_on" src={appSettings.soundRadioOn} preload="auto"/>}
+            {appSettings.soundRadioOff && <audio id="audio_radio_off" src={appSettings.soundRadioOff} preload="auto"/>}
         </div>
     );
 }
