@@ -6,7 +6,7 @@ import RadioDeviceImg from "./RadioDeviceImg.jsx";
 import { SKINS } from "../constants/constants.jsx";
 
 const MainScreen = forwardRef((props, ref) => {
-    const { appSettings, Storage, Utils } = useContext(GlobalContext);
+    const { appSettings, escapp, Storage, Utils } = useContext(GlobalContext);
 
     //Restore state based on props
     const parsedRestoredChannel = Utils.parseChannelId(props.appState?.channel, appSettings.range);
@@ -29,8 +29,16 @@ const MainScreen = forwardRef((props, ref) => {
     
     const [channel, setChannel] = useState(restoredChannel);
     const channelRef = useRef(channel);
+    const activeChannelRef = useRef(null);
     const [volume, setVolume] = useState(restoredVolume);
     const volumeRef = useRef(volume);
+
+    const channelActivationRef = useRef(0);
+    const incorrectSolutions = useRef(new Set());
+    const correctSolution = useRef(undefined);
+    const correctChannel = useRef(undefined);
+    const puzzleCompletionTriggeredRef = useRef(false);
+    const finishedChannelAudiosRef = useRef(new Set());
 
     useImperativeHandle(ref, () => ({
       getState: () => {
@@ -72,6 +80,7 @@ const MainScreen = forwardRef((props, ref) => {
           noiseAudioRef.current = null;
           audioStartedRef.current = false;
           radioReadyRef.current = false;
+          channelActivationRef.current++;
         };
 
     }, []);
@@ -96,8 +105,12 @@ const MainScreen = forwardRef((props, ref) => {
         // Crear audio de cada emisora
         appSettings.validatedChannels.forEach(channel => {
             const audio = new Audio(channel.src);
-            audio.loop = appSettings.enableLoopForChannels;
+            audio.loop = false;
             audio.preload = "auto";
+
+            audio.addEventListener("ended", () => {
+                _onChannelAudioEnded(audio, channel.id);
+            });
 
             // Crear source node
             const source = audioContext.createMediaElementSource(audio);
@@ -166,11 +179,17 @@ const MainScreen = forwardRef((props, ref) => {
             audio = document.getElementById("audio_radio_off");
 
             radioReadyRef.current = false;
-
+            activeChannelRef.current = null;
+            channelActivationRef.current++;
             clearTimeout(radioStartTimeoutRef.current);
             radioStartTimeoutRef.current = null;
 
             _updateRadioAudioVolume();
+
+            channelAudiosRef.current?.forEach(channel => {
+                channel.audio.pause();
+                channel.audio.currentTime = 0;
+            });
         }
 
         if (audio) {
@@ -191,20 +210,12 @@ const MainScreen = forwardRef((props, ref) => {
         if (!audioContext) return;
         await audioContext.resume();
 
-        // Start audio tracks only once
         if (!audioStartedRef.current) {
             audioStartedRef.current = true;
 
-            const audios = [
-                ...channelAudiosRef.current.map(channel => channel.audio),
-                noiseAudioRef.current.audio
-            ];
-
-            const results = await Promise.allSettled(
-                audios.map(audio => audio.play())
-            );
-
-            if (results.some(result => result.status === "rejected")) {
+            try {
+                await noiseAudioRef.current.audio.play();
+            } catch (error) {
                 audioStartedRef.current = false;
             }
         }
@@ -224,7 +235,7 @@ const MainScreen = forwardRef((props, ref) => {
             ? appSettings.channelNoiseRangeNumber + 0.1
             : channelRange;
 
-        // Find the closest channel within noise range
+        // Find the closest channel within reception range
         const activeChannel = channels
             .map(channel => ({
                 channel,
@@ -233,30 +244,68 @@ const MainScreen = forwardRef((props, ref) => {
             .filter(item => item.distance <= noiseRange)
             .sort((a, b) => a.distance - b.distance)[0];
 
+        const previousActiveChannel = activeChannelRef.current;
+        const newActiveChannel = activeChannel?.channel ?? null;
+        activeChannelRef.current = newActiveChannel;
+        if (newActiveChannel !== previousActiveChannel) {
+          channelActivationRef.current++;
+        }
         let channelGain = 0;
         let noiseGain = 1;
 
         if (activeChannel) {
             const distance = activeChannel.distance;
-
             if (distance <= channelRange) {
-                // Clear reception without static noise
                 channelGain = 1;
                 noiseGain = 0;
             } else {
-                // Gradually mix channel audio with static noise
-                const progress = (distance - channelRange) /
-                    (noiseRange - channelRange);
-
+                const progress = (distance - channelRange) / (noiseRange - channelRange);
                 channelGain = 1 - progress;
                 noiseGain = progress;
             }
         }
 
-        // Update channel gains
+        // Start the active channel and stop all others
         channels.forEach(channel => {
+            const isActive = channel === newActiveChannel;
+            const justActivated = isActive && channel !== previousActiveChannel;
+            const audio = channel.audio;
+
+            if (isActive) {
+                if (justActivated) {
+                    // Restart when entering the reception range
+                    audio.pause();
+                    audio.currentTime = 0;
+
+                    audio.play()
+                        .then(() => {
+                            // Stop if the channel is no longer active
+                            if (
+                                radioStateRef.current !== "on" ||
+                                activeChannelRef.current !== channel
+                            ) {
+                                audio.pause();
+                                audio.currentTime = 0;
+                            }
+                        })
+                        .catch(error => {
+                            if (error.name !== "AbortError") {
+                                console.warn("Channel playback failed:", channel.id, error);
+                            }
+                        });
+                }
+            } else {
+                if (!audio.paused) {
+                    audio.pause();
+                }
+
+                if (audio.currentTime !== 0) {
+                    audio.currentTime = 0;
+                }
+            }
+
             channel.gain.gain.setTargetAtTime(
-                channel === activeChannel?.channel ? channelGain : 0,
+                isActive ? channelGain : 0,
                 now,
                 fadeTime
             );
@@ -270,6 +319,14 @@ const MainScreen = forwardRef((props, ref) => {
         );
 
         _updateRadioAudioVolume();
+
+        if (newActiveChannel && newActiveChannel !== previousActiveChannel) {
+          checkSolution(newActiveChannel.id);
+        }
+
+        if (appSettings.actionAfterSolve === "PLAY_AUDIO" && correctSolution.current !== undefined && finishedChannelAudiosRef.current.has(correctChannel.current)) {
+          completePuzzle();
+        }
     }
 
     function _updateRadioAudioVolume() {
@@ -306,6 +363,86 @@ const MainScreen = forwardRef((props, ref) => {
         }
         lastClickRef.current = now;
         setRadioState(prev => prev === "off" ? "on" : "off");
+    };
+
+    const checkSolution = (_channelId) => {
+        if(appSettings.noLinkedPuzzles) return;
+        _channelId = Utils.parseChannelId(_channelId, appSettings.range);
+        if (typeof _channelId !== "number") return;
+        const activationId = channelActivationRef.current;
+
+        setTimeout(() => {
+            if (
+                radioStateRef.current === "on" &&
+                radioReadyRef.current &&
+                activeChannelRef.current?.id === _channelId &&
+                channelActivationRef.current === activationId
+            ) {
+                _checkSolutionAfterTimeout(_channelId);
+            }
+        }, 600);
+    };
+
+    const _checkSolutionAfterTimeout = (_channelId) => {
+      Utils.log("Check channel", _channelId);
+      
+      let solution = _channelId + "";
+      if(incorrectSolutions.current.has(_channelId)) return;
+      if (correctChannel.current === _channelId) return;
+      if((typeof correctChannel.current === "number") && escapp.getAllPuzzlesSolved() && (escapp.getSolvedPuzzles().length > 0)) return;
+
+      Utils.log("Check solution: " + solution);
+      escapp.checkNextPuzzle(solution, {}, (success, erState) => {
+        Utils.log("Check solution Escapp response", success, erState);
+        if(success === true){
+          correctSolution.current = solution;
+          correctChannel.current = _channelId;
+          afterFirstSuccesfullCheck();
+        } else {
+          incorrectSolutions.current.add(_channelId);
+        }
+      });
+    };
+
+    const afterFirstSuccesfullCheck = () => {
+        if (appSettings.actionAfterSolve === "NONE") {
+            completePuzzle();
+        } else if (appSettings.actionAfterSolve === "PLAY_AUDIO") {
+            if (!radioReadyRef.current) return;
+
+            if (finishedChannelAudiosRef.current.has(correctChannel.current)) {
+                completePuzzle();
+                return;
+            }
+            // Wait for _onChannelAudioEnded
+        }
+    };
+
+    function _onChannelAudioEnded(audio, channelId) {
+        if (radioStateRef.current !== "on" || !radioReadyRef.current || activeChannelRef.current?.id !== channelId ) {
+          return;
+        }
+        finishedChannelAudiosRef.current.add(channelId);
+
+        if (correctChannel.current === channelId && correctSolution.current !== undefined) {
+          //Puzzle solved with this audio
+          if(appSettings.actionAfterSolve === "PLAY_AUDIO"){
+            completePuzzle();
+          }
+          return;
+        }
+
+        if (appSettings.enableLoopForChannels === true) {
+          audio.currentTime = 0;
+          audio.play().catch(() => {});
+        }
+    };
+
+    const completePuzzle = () => {
+        if (puzzleCompletionTriggeredRef.current) return;
+        if (correctSolution.current === undefined) return;
+        puzzleCompletionTriggeredRef.current = true;
+        props.onPuzzleSolved(correctSolution.current);
     };
 
     const skinClass = appSettings?.skin ? `skin-${appSettings.skin.toLowerCase()}` : 'skin-standard';

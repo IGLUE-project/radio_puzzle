@@ -237,30 +237,19 @@ export default function App() {
       return validatedChannel;
   }
 
-  function solvePuzzle(_solution) {
-    Utils.log("solution: ", _solution);
-    return checkResult(_solution);
+  function onPuzzleSolved(_solution) {
+    Utils.log("onPuzzleSolved with solution:", _solution);
+    if (typeof _solution !== "string") {
+      return;
+    }
+    solution.current = _solution;
+    submitPuzzleSolution();
   }
 
-  function checkResult(_solution) {
-    escapp.checkNextPuzzle(_solution, {}, (success, erState) => {
-      Utils.log("Check solution Escapp response", success, erState);
-      if (success) {
-        setSolved(true);
-        try {
-          setTimeout(() => {
-            submitPuzzleSolution(_solution);
-          }, 2000);
-        } catch (e) {
-          Utils.log("Error in checkNextPuzzle", e);
-        }
-      }
-    });
-  }
-  function submitPuzzleSolution(_solution) {
-    Utils.log("Submit puzzle solution", _solution);
-    escapp.submitNextPuzzle(_solution, {}, (success, erState) => {
-      Utils.log("Solution submitted to Escapp", _solution, success, erState);
+  function submitPuzzleSolution() {
+    Utils.log("Submit puzzle solution", solution.current);
+    escapp.submitNextPuzzle(solution.current, {}, (success, erState) => {
+      Utils.log("Solution submitted to Escapp", solution.current, success, erState);
     });
   }
 
@@ -290,7 +279,7 @@ export default function App() {
             width: "100%",
           }}
         >
-          <MainScreen ref={mainScreenRef} appState={appState} saveAppState={saveAppState} solvePuzzle={solvePuzzle} solved={solved} />
+          <MainScreen ref={mainScreenRef} appState={appState} saveAppState={saveAppState} onPuzzleSolved={onPuzzleSolved} solved={solved} />
         </div>
       ),
     }
