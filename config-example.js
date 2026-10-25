@@ -2,19 +2,27 @@
 
 export let ESCAPP_APP_SETTINGS = {
   //Settings that can be specified by the authors
-  skin: "MODERN", //skin can be STANDARD, RETRO or MODERN
+  skin: "STANDARD", //skin can be "STANDARD", "MODERN" or "RETRO".
   // backgroundImg: "NONE", //background can be "NONE" or a URL.
-  // actionWhenLoadingIfSolved: "TRUE",
-  // Radio Configuration
+  actionAfterSolve: "PLAY_AUDIO", //actionAfterSolve can be "NONE" or "PLAY_AUDIO".
+  enableLoopForChannels: "TRUE", //Whether the channel audios will play on a loop
+  initialChannel: "87", //Initial channel of the radio (87-108 by default)
+  initialVolume: "50", //Initial volume of the radio (0-100)
+  keepState: "TRUE", //Enable keeping the radio state when the app is closed
 
-  stations: [
-    { freq: 88.5, url: "/sounds/radio1.wav" },
-    { freq: 100, url: "/sounds/radio2.wav" },
+  channels: [
+    {
+      id: "88.5", 
+      src: "sounds/music_rock.mp3" 
+    },
+    { 
+      id: "100", 
+      src: "sounds/music_techno.mp3" 
+    }
   ],
-  range: { min: 87.0, max: 108.0 },
-  step: 0.1,
-  tolerance: 0.3, // Frequency match tolerance
 
+  channelRange: "0.0", // Frequency tolerance within which audio plays without noise.
+  channelNoiseRange: "0.3", // Frequency tolerance within which audio plays with noise.
 
   escappClientSettings: {
     endpoint: "https://escapp.es/api/escapeRooms/id",

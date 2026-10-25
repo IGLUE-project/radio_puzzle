@@ -9,9 +9,9 @@ export const DEFAULT_APP_SETTINGS = {
   keepState: "TRUE",
   channelRange: "0.0",
   channelNoiseRange: "0.3",
+  channels: [],
 
   //Internal
-  channels: [],
   soundRadioNoise: "sounds/noise_radio_soft.mp3",
   soundRadioOn: "sounds/click_button.mp3",
   soundRadioOff: "sounds/click_button.mp3",
