@@ -324,8 +324,14 @@ const MainScreen = forwardRef((props, ref) => {
 
         _updateRadioAudioVolume();
 
-        if (newActiveChannel && newActiveChannel !== previousActiveChannel) {
-          checkSolution(newActiveChannel.id);
+        // Solution check
+        if (newActiveChannel) {
+            if (newActiveChannel !== previousActiveChannel) {
+                checkSolution(newActiveChannel.id);
+            }
+        } else if (appSettings.actionAfterSolve === "NONE") {
+            channelActivationRef.current++;
+            checkSolution(_channel, false);
         }
 
         if (appSettings.actionAfterSolve === "PLAY_AUDIO" && correctSolution.current !== undefined && finishedChannelAudiosRef.current.has(correctChannel.current)) {
@@ -385,22 +391,27 @@ const MainScreen = forwardRef((props, ref) => {
         setRadioState(prev => prev === "off" ? "on" : "off");
     };
 
-    const checkSolution = (_channelId) => {
-        if(appSettings.noLinkedPuzzles) return;
+    const checkSolution = (_channelId, hasAudio = true) => {
+        if (appSettings.noLinkedPuzzles) return;
+        if (!hasAudio && appSettings.actionAfterSolve === "PLAY_AUDIO") return;
         _channelId = Utils.parseChannelId(_channelId, appSettings.range);
         if (typeof _channelId !== "number") return;
-        const activationId = channelActivationRef.current;
 
+        const activationId = channelActivationRef.current;
         setTimeout(() => {
             if (
                 radioStateRef.current === "on" &&
                 radioReadyRef.current &&
-                activeChannelRef.current?.id === _channelId &&
-                channelActivationRef.current === activationId
+                channelActivationRef.current === activationId &&
+                (
+                    hasAudio
+                        ? activeChannelRef.current?.id === _channelId
+                        : activeChannelRef.current === null && channelRef.current === _channelId
+                )
             ) {
                 _checkSolutionAfterTimeout(_channelId);
             }
-        }, 600);
+        }, (appSettings.actionAfterSolve === "PLAY_AUDIO") ? 600 : 1500);
     };
 
     const _checkSolutionAfterTimeout = (_channelId) => {
