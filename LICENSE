@@ -690,15 +690,6 @@ Public License instead of this License.  But first, please read
 
 -------------------------------------------------------------------------------------------------
 
-Third-Party Dependencies
-
-This software uses or has parts based on the following third-party software (each third-party software is licensed under its respective license):
-
-Escapp client (https://github.com/iglue-project/escapp_client) | GNU General Public License Version 3 (See escapp.js.LICENSE)
-Software included as dependencies in the package.json file.
-
--------------------------------------------------------------------------------------------------
-
 Assets
 
 Images and sounds are licensed under the CC0 license (https://creativecommons.org/publicdomain/zero/1.0/).

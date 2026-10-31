@@ -31,6 +31,7 @@ for(let i=0; i<apps.length; i++){
 	commands.push('cp ' + escapp_library_path + '/dist/escapp.js ' + app_path + '/public/escapp.js');
 	commands.push('cp ' + escapp_library_path + '/dist/escapp.css ' + app_path  + '/public/css/escapp.css');
 	commands.push('cp ' + escapp_library_path + '/dist/images/* ' + app_path  + '/public/images/');
+	commands.push('cp ' + escapp_library_path + '/dist/escapp.js.LICENSE ' + app_path + '/public/escapp.js.LICENSE');
 }
 
 for(let j=0; j<commands.length; j++){
