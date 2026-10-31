@@ -68,6 +68,6 @@ export const SKIN_SETTINGS = {
 };
 
 export const ESCAPP_CLIENT_SETTINGS = {
-  imagesPath: ".images/",
+  imagesPath: "./images/",
 };
 export const MAIN_SCREEN = "MAIN_SCREEN";
